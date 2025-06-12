@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: resource-recommender
+  labels:
+    name: resource-recommender
+    app: k8s-resource-recommender 
