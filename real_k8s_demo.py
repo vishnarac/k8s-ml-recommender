@@ -62,11 +62,11 @@ def main():
             if deployment['available_replicas'] > 0:
                 print(f"   Collecting metrics for {deployment['name']}...")
                 
-                # Collect metrics for 5 minutes (shorter for demo)
+                # Collect metrics for a very short time (just for testing)
                 metrics_df = collector.collect_deployment_metrics(
                     namespace=deployment['namespace'],
                     deployment_name=deployment['name'],
-                    hours=0.1  # 6 minutes
+                    hours=0.01  # 36 seconds
                 )
                 
                 if not metrics_df.empty:
@@ -94,7 +94,7 @@ def main():
         # Preprocess data
         print("\n🔧 Preprocessing data...")
         preprocessor = DataPreprocessor()
-        processed_df = preprocessor.preprocess(combined_df)
+        processed_df, _ = preprocessor.preprocess_data(combined_df)
         
         if processed_df.empty:
             print("❌ No data after preprocessing")
@@ -126,11 +126,29 @@ def main():
                 ]
                 
                 if not deployment_metrics.empty:
-                    # Get current resource usage
-                    current_cpu = deployment_metrics['cpu_usage'].mean()
-                    current_memory = deployment_metrics['memory_usage'].mean()
-                    current_cpu_p95 = deployment_metrics['cpu_usage'].quantile(0.95)
-                    current_memory_p95 = deployment_metrics['memory_usage'].quantile(0.95)
+                    # Print column names for debugging
+                    print(f"   Available columns for {deployment['name']}: {deployment_metrics.columns.tolist()}")
+                    
+                    # Get current resource usage - use appropriate column names
+                    if 'cpu_usage' in deployment_metrics.columns:
+                        current_cpu = deployment_metrics['cpu_usage'].mean()
+                        current_cpu_p95 = deployment_metrics['cpu_usage'].quantile(0.95)
+                    elif 'cpu_usage_p95' in deployment_metrics.columns:
+                        current_cpu = deployment_metrics['cpu_usage_p95'].mean()
+                        current_cpu_p95 = deployment_metrics['cpu_usage_p95'].mean()  # Use mean of p95 values
+                    else:
+                        print(f"   ⚠️ No CPU usage data found for {deployment['name']}")
+                        continue
+                        
+                    if 'memory_usage' in deployment_metrics.columns:
+                        current_memory = deployment_metrics['memory_usage'].mean()
+                        current_memory_p95 = deployment_metrics['memory_usage'].quantile(0.95)
+                    elif 'memory_usage_p95' in deployment_metrics.columns:
+                        current_memory = deployment_metrics['memory_usage_p95'].mean()
+                        current_memory_p95 = deployment_metrics['memory_usage_p95'].mean()  # Use mean of p95 values
+                    else:
+                        print(f"   ⚠️ No memory usage data found for {deployment['name']}")
+                        continue
                     
                     # Generate recommendations
                     if len(processed_df) >= 10:
@@ -142,9 +160,20 @@ def main():
                         recommended_cpu = max(current_cpu_p95 * 1.2, 50)  # 20% safety margin, min 50m
                         recommended_memory = max(current_memory_p95 * 1.3, 64)  # 30% safety margin, min 64Mi
                     
-                    # Calculate potential savings
-                    current_cpu_request = deployment_metrics['cpu_requests'].iloc[0]
-                    current_memory_request = deployment_metrics['memory_requests'].iloc[0]
+                    # Get current resource requests
+                    if 'cpu_requests' in deployment_metrics.columns:
+                        current_cpu_request = deployment_metrics['cpu_requests'].iloc[0]
+                    else:
+                        # Get from the original deployment specification
+                        current_cpu_request = deployment.get('cpu_request', 100)  # Default to 100m if not found
+                        print(f"   ⚠️ Using default cpu_request value: {current_cpu_request}m")
+                    
+                    if 'memory_requests' in deployment_metrics.columns:
+                        current_memory_request = deployment_metrics['memory_requests'].iloc[0]
+                    else:
+                        # Get from the original deployment specification
+                        current_memory_request = deployment.get('memory_request', 128)  # Default to 128Mi if not found
+                        print(f"   ⚠️ Using default memory_request value: {current_memory_request}Mi")
                     
                     cpu_savings = (current_cpu_request - recommended_cpu) / current_cpu_request * 100
                     memory_savings = (current_memory_request - recommended_memory) / current_memory_request * 100
@@ -223,4 +252,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
+    main()

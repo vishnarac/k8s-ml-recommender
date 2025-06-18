@@ -1,0 +1,4 @@
+deployment,namespace,current_cpu_avg,current_cpu_p95,current_memory_avg,current_memory_p95,current_cpu_request,current_memory_request,recommended_cpu,recommended_memory,cpu_savings_pct,memory_savings_pct,confidence
+api-server,demo-apps,0.0,0.0,1.6,1.6,100,128,50,64,50.0,50.0,Medium
+cache,demo-apps,1.1,1.1,-0.4,-0.4,100,128,50,64,50.0,50.0,Medium
+web-app,demo-apps,-0.9,-0.9,0.0,0.0,100,128,50,64,50.0,50.0,Medium
