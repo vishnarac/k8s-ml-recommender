@@ -2,6 +2,6 @@
 Command-line interface for Kubernetes resource recommendations.
 """
 
-from .cli import main
+from .cli import cli
 
-__all__ = ["main"] 
+__all__ = ["cli"] 

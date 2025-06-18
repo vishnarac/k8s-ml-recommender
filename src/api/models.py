@@ -3,7 +3,7 @@ Pydantic models for the recommendation API.
 """
 
 from typing import Dict, List, Optional, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime
 
 
@@ -45,15 +45,19 @@ class RecommendationResponse(BaseModel):
 
 class TrainingRequest(BaseModel):
     """Request to train a new model."""
+    model_config = ConfigDict(protected_namespaces=())
+    
     namespace: str
     deployment_name: str
     days: int = Field(default=30, ge=1, le=365)
-    model_type: str = Field(default="regression", regex="^(regression|lstm|ensemble)$")
+    model_type: str = Field(default="regression", pattern="^(regression|lstm|ensemble)$")
     force_retrain: bool = Field(default=False, description="Force retraining even if model exists")
 
 
 class TrainingResponse(BaseModel):
     """Response from model training."""
+    model_config = ConfigDict(protected_namespaces=())
+    
     namespace: str
     deployment_name: str
     model_path: str

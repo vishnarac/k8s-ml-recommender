@@ -8,6 +8,7 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Any
 import uuid
+import numpy as np
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -474,5 +475,5 @@ class RecommendationAPI:
             self.app,
             host=host,
             port=port,
-            workers=self.config['api']['workers']
+            reload=False
         ) 

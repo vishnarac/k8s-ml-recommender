@@ -1,0 +1,160 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo-apps
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app
+  namespace: demo-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+      - name: web-app
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          # Simulate CPU and memory usage
+          while true; do
+            # CPU intensive task
+            for i in {1..100}; do
+              echo "Processing request $i" > /dev/null
+            done
+            # Memory usage
+            dd if=/dev/zero of=/tmp/test bs=1M count=10 2>/dev/null
+            sleep 10
+          done
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: demo-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      containers:
+      - name: api-server
+        image: python:3.9-alpine
+        ports:
+        - containerPort: 8000
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+        command: ["python"]
+        args:
+        - -c
+        - |
+          import time
+          import random
+          
+          # Simulate API server with variable load
+          while True:
+            # Simulate CPU usage based on time
+            cpu_load = 20 + 15 * (time.time() % 60) / 60
+            for _ in range(int(cpu_load * 10)):
+              _ = random.random() ** 2
+            
+            # Simulate memory usage
+            memory_usage = 20 + 30 * random.random()
+            data = "x" * int(memory_usage * 1024 * 1024)
+            
+            time.sleep(5)
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cache
+  namespace: demo-apps
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cache
+  template:
+    metadata:
+      labels:
+        app: cache
+    spec:
+      containers:
+      - name: cache
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-app-service
+  namespace: demo-apps
+spec:
+  selector:
+    app: web-app
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-server-service
+  namespace: demo-apps
+spec:
+  selector:
+    app: api-server
+  ports:
+  - port: 8000
+    targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cache-service
+  namespace: demo-apps
+spec:
+  selector:
+    app: cache
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP 
