@@ -11,6 +11,7 @@ import numpy as np
 from kubernetes import client, config
 from prometheus_api_client import PrometheusConnect
 import yaml
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -29,19 +30,43 @@ class MetricsCollector:
         
         # Initialize Kubernetes client
         try:
-            config.load_kube_config(config_file=self.config['kubernetes']['config_path'])
+            # Check if running in cluster
+            if os.path.exists('/var/run/secrets/kubernetes.io/serviceaccount'):
+                # Load in-cluster config
+                config.load_incluster_config()
+                logger.info("Loaded in-cluster Kubernetes configuration")
+            else:
+                # Load local kubeconfig
+                config_file = self.config['kubernetes'].get('config_path')
+                if config_file and config_file != '/var/run/secrets/kubernetes.io/serviceaccount':
+                    config.load_kube_config(config_file=config_file)
+                else:
+                    config.load_kube_config()
+                logger.info("Loaded local Kubernetes configuration")
+                
             self.k8s_client = client.CoreV1Api()
             self.k8s_apps_client = client.AppsV1Api()
+            logger.info("Kubernetes clients initialized successfully")
+            
         except Exception as e:
-            logger.warning(f"Failed to load Kubernetes config: {e}")
+            logger.error(f"Failed to load Kubernetes config: {e}")
             self.k8s_client = None
             self.k8s_apps_client = None
         
-        # Initialize Prometheus client
-        self.prometheus = PrometheusConnect(
-            url=self.config['prometheus']['url'],
-            disable_ssl=True
-        )
+        # Initialize Prometheus client (optional)
+        try:
+            if self.config.get('prometheus', {}).get('enabled', True):
+                self.prometheus = PrometheusConnect(
+                    url=self.config['prometheus']['url'],
+                    disable_ssl=True
+                )
+                logger.info("Prometheus client initialized")
+            else:
+                self.prometheus = None
+                logger.info("Prometheus disabled in configuration")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Prometheus client: {e}")
+            self.prometheus = None
         
         self.metrics_config = self.config['prometheus']['metrics']
         
@@ -301,4 +326,4 @@ class MetricsCollector:
             ]
         except Exception as e:
             logger.error(f"Failed to get deployments: {e}")
-            return [] 
+            return []
