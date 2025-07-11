@@ -6,6 +6,14 @@ prometheus:
   timeout: 30
   retry_attempts: 3
   enabled: false  # Disable Prometheus for local demo
+  metrics:
+    cpu_usage: "container_cpu_usage_seconds_total"
+    memory_usage: "container_memory_usage_bytes"
+    cpu_requests: "kube_pod_container_resource_requests_cpu_cores"
+    memory_requests: "kube_pod_container_resource_requests_memory_bytes"
+    cpu_limits: "kube_pod_container_resource_limits_cpu_cores"
+    memory_limits: "kube_pod_container_resource_limits_memory_bytes"
+    pod_restarts: "kube_pod_container_status_restarts_total"
 
 # Kubernetes Configuration
 kubernetes:
@@ -138,4 +146,4 @@ security:
     
   secrets:
     mount_path: "/secrets"
-    prometheus_token_path: "/secrets/prometheus-token" 
+    prometheus_token_path: "/secrets/prometheus-token"

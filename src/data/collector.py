@@ -68,7 +68,8 @@ class MetricsCollector:
             logger.warning(f"Failed to initialize Prometheus client: {e}")
             self.prometheus = None
         
-        self.metrics_config = self.config['prometheus']['metrics']
+        # Handle missing metrics config gracefully
+        self.metrics_config = self.config.get('prometheus', {}).get('metrics', {})
         
     async def collect_deployment_metrics(
         self, 
@@ -107,6 +108,19 @@ class MetricsCollector:
         # Merge and process data
         combined_data = self._merge_metrics_data(metrics_data, k8s_data, deployment_info)
         
+        # If no Prometheus data and we have Kubernetes clients, try local metrics collection
+        if combined_data.empty and self.k8s_client is not None:
+            logger.info("No Prometheus data available, attempting to use Kubernetes metrics API")
+            try:
+                from .local_collector import LocalMetricsCollector
+                local_collector = LocalMetricsCollector()
+                local_data = local_collector.collect_deployment_metrics(namespace, deployment_name, hours=days*24)
+                if not local_data.empty:
+                    combined_data = local_data
+                    logger.info(f"Collected {len(combined_data)} data points from Kubernetes metrics API")
+            except Exception as e:
+                logger.warning(f"Failed to use local metrics collector: {e}")
+        
         logger.info(f"Collected {len(combined_data)} data points")
         return combined_data
     
@@ -136,6 +150,19 @@ class MetricsCollector:
     ) -> Dict[str, List]:
         """Collect metrics from Prometheus."""
         metrics_data = {}
+        
+        # If Prometheus is not available, return empty metrics
+        if self.prometheus is None:
+            logger.warning("Prometheus client not available, skipping Prometheus metrics collection")
+            return {
+                'cpu_usage': [],
+                'memory_usage': [],
+                'cpu_requests': [],
+                'memory_requests': [],
+                'cpu_limits': [],
+                'memory_limits': [],
+                'pod_restarts': []
+            }
         
         # Prometheus query templates
         queries = {
